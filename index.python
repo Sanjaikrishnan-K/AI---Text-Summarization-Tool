@@ -1,0 +1,98 @@
+import re
+from collections import defaultdict
+from heapq import nlargest
+
+def summarize_text(text, num_sentences=3):
+    """
+    Summarizes the given text by extracting the most important sentences.
+
+    Args:
+        text (str): The input text to be summarized.
+        num_sentences (int): The desired number of sentences in the summary.
+
+    Returns:
+        str: The summarized text.
+    """
+
+    if not text:
+        return "Input text cannot be empty."
+    if num_sentences <= 0:
+        return "Number of sentences for summary must be positive."
+
+    # 1. Tokenize the text into sentences
+    # Using a regex to split by common sentence-ending punctuation.
+    sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', text)
+    # Remove any empty strings that might result from splitting
+    sentences = [s.strip() for s in sentences if s.strip()]
+
+    if not sentences:
+        return "Could not find any sentences in the text."
+    if len(sentences) <= num_sentences:
+        # If the text has fewer or equal sentences than requested, return the original text.
+        return text
+
+    # 2. Preprocess the text for word frequency calculation
+    # Convert to lowercase and remove non-alphabetic characters.
+    formatted_text = re.sub('[^a-zA-Z]', ' ', text).lower()
+    words = formatted_text.split()
+
+    # 3. Calculate word frequencies
+    # We use defaultdict to easily count word occurrences.
+    word_frequencies = defaultdict(int)
+    for word in words:
+        word_frequencies[word] += 1
+
+    # 4. Calculate sentence scores
+    # Each sentence's score is the sum of the frequencies of its words.
+    sentence_scores = defaultdict(int)
+    for i, sentence in enumerate(sentences):
+        for word in sentence.split():
+            # Only consider words that are in our frequency dictionary
+            if word.lower() in word_frequencies:
+                sentence_scores[i] += word_frequencies[word.lower()]
+
+    # 5. Get the top N sentences based on their scores
+    # nlargest returns a list of the N largest items from an iterable.
+    # We want the indices of the sentences with the highest scores.
+    summarized_sentences_indices = nlargest(num_sentences, sentence_scores, key=sentence_scores.get)
+
+    # Sort the indices to maintain the original order of sentences in the summary
+    summarized_sentences_indices.sort()
+
+    # 6. Reconstruct the summary
+    summary = [sentences[i] for i in summarized_sentences_indices]
+
+    return ' '.join(summary)
+
+# --- Example Usage ---
+if __name__ == "__main__":
+    sample_text = """
+    Artificial intelligence (AI) is rapidly transforming various industries.
+    From healthcare to finance, AI-powered solutions are improving efficiency and decision-making.
+    Machine learning, a subset of AI, enables systems to learn from data without explicit programming.
+    Deep learning, a further specialization, uses neural networks with many layers to model complex patterns.
+    The ethical implications of AI, such as bias and job displacement, are important considerations.
+    Researchers are actively working on developing responsible AI practices.
+    The future of AI holds immense potential for innovation and societal benefit.
+    """
+
+    print("Original Text:\n", sample_text)
+    print("\n--- Summary (3 sentences) ---")
+    summary_3_sentences = summarize_text(sample_text, num_sentences=3)
+    print(summary_3_sentences)
+
+    print("\n--- Summary (2 sentences) ---")
+    summary_2_sentences = summarize_text(sample_text, num_sentences=2)
+    print(summary_2_sentences)
+
+    print("\n--- Summary (All sentences, if less than requested) ---")
+    summary_all_sentences = summarize_text("This is a short text. It has two sentences.", num_sentences=5)
+    print(summary_all_sentences)
+
+    print("\n--- Summary (Empty text) ---")
+    summary_empty = summarize_text("", num_sentences=3)
+    print(summary_empty)
+
+    print("\n--- Summary (Zero sentences requested) ---")
+    summary_zero = summarize_text("Some text here.", num_sentences=0)
+    print(summary_zero)
